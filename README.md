@@ -16,3 +16,9 @@ subscribeKey: "sub-key-here"
 
 with your pub/sub keys
 
+
+## Todo List
+
+1. Display all users that currently have the page open
+2. Display latency results for all users
+
