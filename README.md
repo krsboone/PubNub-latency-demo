@@ -9,8 +9,8 @@ User clicks one of the provided color buttons causing the backgroundColor to be 
 ## Config
 
 Replace     
-*publishKey: "pub-key-here"*
-*subscribeKey: "sub-key-here"*
+```publishKey: "pub-key-here"
+subscribeKey: "sub-key-here"```
 
 with your pub/sub keys
 
