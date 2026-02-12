@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PubNub Latency Demo</title>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            transition: background-color 0.2s ease;
+            background-color: #f0f2f5;
+        }
+        .stats-container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 30px;
+            min-width: 300px;
+        }
+        #latency-display {
+            font-size: 24px;
+            font-weight: 800;
+            color: #006F87; /* brand color */
+            margin-top: 10px;
+        }
+        .button-grid { display: flex; gap: 15px; }
+        button {
+            width: 70px;
+            height: 70px;
+            border: 4px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.9); }
+        .red { background: #e74c3c; }
+        .yellow { background: #f1c40f; }
+        .blue { background: #3498db; }
+        .green { background: #2ecc71; }
+        .orange { background: #e67e22; }
+    </style>
+</head>
+<body>
+
+    <div class="stats-container">
+        <div id="status">Connecting...</div>
+        <div id="last-sync">Waiting for event...</div>
+        <div id="latency-display">-- ms</div>
+        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; color: #888;">One-Way Latency</div>
+    </div>
+
+    <div class="button-grid">
+        <button class="red" onclick="publishColor('#e74c3c')"></button>
+        <button class="yellow" onclick="publishColor('#f1c40f')"></button>
+        <button class="blue" onclick="publishColor('#3498db')"></button>
+        <button class="green" onclick="publishColor('#2ecc71')"></button>
+        <button class="orange" onclick="publishColor('#e67e22')"></button>
+    </div>
+
+    <script>
+        const pubnub = new PubNub({
+            publishKey: "pub-key-here",
+            subscribeKey: "sub-key-here",
+            userId: "Architect_" + Math.random().toString(36).substring(2, 7)
+        });
+
+        const channel = "latency_test_channel";
+
+        pubnub.subscribe({ channels: [channel] });
+
+        pubnub.addListener({
+            status: (s) => {
+                if (s.category === "PNConnectedCategory") {
+                    document.getElementById('status').innerText = "🌐 Network Online";
+                }
+            },
+            message: (event) => {
+                const now = Date.now();
+                const sentAt = event.message.sentAt;
+                const color = event.message.color;
+
+                // Calculate Latency
+                const latency = now - sentAt;
+
+                // Update UI
+                document.body.style.backgroundColor = color;
+                document.getElementById('last-sync').innerText = "Sync from: " + event.publisher;
+                document.getElementById('latency-display').innerText = latency + " ms";
+
+                console.log(`Latency: ${latency}ms | Received: ${color}`);
+            }
+        });
+
+        function publishColor(hex) {
+            const payload = {
+                color: hex,
+                sentAt: Date.now() // Injecting the timestamp
+            };
+
+            pubnub.publish({
+                channel: channel,
+                message: payload
+            });
+        }
+    </script>
+</body>
+</html>
