@@ -27,4 +27,5 @@ https://youtu.be/gnb5oTRhHHg
 
 1. Display all users that currently have the page open
 2. Display latency results for all users
+3. Strict userIDs vs randomly generated
 
