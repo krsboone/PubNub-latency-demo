@@ -29,9 +29,29 @@
         #latency-display {
             font-size: 24px;
             font-weight: 800;
-            color: #006F87; /*  brand color */
+            color: #006F87;
             margin-top: 10px;
         }
+
+        /* New Leaderboard Styles */
+        #leaderboard {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            text-align: left;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .result-row {
+            font-size: 13px;
+            color: #555;
+            padding: 4px 0;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #f9f9f9;
+        }
+        .result-row span.fast { color: #2ecc71; font-weight: bold; }
+
         .button-grid { display: flex; gap: 15px; }
         button {
             width: 70px;
@@ -48,7 +68,6 @@
         .green { background: #2ecc71; }
         .orange { background: #e67e22; }
 
-        /* Username modal */
         #username-modal {
             position: fixed; inset: 0;
             background: rgba(0,0,0,0.5);
@@ -80,7 +99,6 @@
 </head>
 <body>
 
-    <!-- Username prompt -->
     <div id="username-modal">
         <div class="modal-box">
             <h2>Welcome</h2>
@@ -95,6 +113,8 @@
         <div id="last-sync">Waiting for event...</div>
         <div id="latency-display">-- ms</div>
         <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; color: #888;">One-Way Latency</div>
+
+        <div id="leaderboard"></div>
     </div>
 
     <div class="button-grid">
@@ -108,6 +128,7 @@
     <script>
         let pubnub;
         const channel = "latency_test_channel";
+        let currentUser = ""; // Store globally to use in reporting
 
         function startDemo() {
             const input = document.getElementById('username-input');
@@ -117,6 +138,7 @@
                 return;
             }
 
+            currentUser = username;
             document.getElementById('username-modal').style.display = 'none';
 
             pubnub = new PubNub({
@@ -134,24 +156,50 @@
                     }
                 },
                 message: (event) => {
-                    const now = Date.now();
-                    const sentAt = event.message.sentAt;
-                    const color = event.message.color;
+                    const msg = event.message;
 
-                    // Calculate Latency
-                    const latency = now - sentAt;
+                    // --- LOGIC CHANGE 1: Handle Color Change & Publish Latency ---
+                    if (msg.color) {
+                        const now = Date.now();
+                        const sentAt = msg.sentAt;
 
-                    // Update UI
-                    document.body.style.backgroundColor = color;
-                    document.getElementById('last-sync').innerText = "Sync from: " + event.publisher;
-                    document.getElementById('latency-display').innerText = latency + " ms";
+                        // 1. Calculate My Latency
+                        const latency = now - sentAt;
 
-                    console.log(`Latency: ${latency}ms | Received: ${color}`);
+                        // 2. Update UI
+                        document.body.style.backgroundColor = msg.color;
+                        document.getElementById('last-sync').innerText = "Sync from: " + event.publisher;
+                        document.getElementById('latency-display').innerText = latency + " ms";
+
+                        // 3. Clear Leaderboard (New Round)
+                        document.getElementById('leaderboard').innerHTML = '<div style="font-size:10px; color:#aaa; margin-bottom:5px;">REAL-TIME RESULTS:</div>';
+
+                        // 4. Publish MY Latency Result to the group
+                        pubnub.publish({
+                            channel: channel,
+                            message: {
+                                type: "report",       // Differentiates this from color messages
+                                user: currentUser,
+                                value: latency
+                            }
+                        });
+                    }
+
+                    // --- LOGIC CHANGE 2: Handle Incoming Latency Reports ---
+                    else if (msg.type === "report") {
+                        const board = document.getElementById('leaderboard');
+                        const row = document.createElement('div');
+                        row.className = 'result-row';
+                        row.innerHTML = `
+                            <strong>${msg.user}</strong>
+                            <span class="${msg.value < 100 ? 'fast' : ''}">${msg.value} ms</span>
+                        `;
+                        board.appendChild(row);
+                    }
                 }
             });
         }
 
-        // Allow pressing Enter in the input to submit
         document.getElementById('username-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') startDemo();
         });
@@ -159,7 +207,7 @@
         function publishColor(hex) {
             const payload = {
                 color: hex,
-                sentAt: Date.now() // Injecting the timestamp
+                sentAt: Date.now()
             };
 
             pubnub.publish({
