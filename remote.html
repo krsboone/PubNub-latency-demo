@@ -144,7 +144,7 @@
             pubnub = new PubNub({
                 publishKey: "pub-key-here",
                 subscribeKey: "sub-key-here",
-                userId: "Tester_" + username
+                userId: username
             });
 
             pubnub.subscribe({ channels: [channel] });
